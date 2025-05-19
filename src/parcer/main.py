@@ -2,7 +2,7 @@ from openpyxl import load_workbook
 import pandas as pd
 
 import numpy as np
-from typing import List
+from typing import List, Dict, Tuple
 import re
 
 file_path = "data/data.xlsx"
@@ -13,11 +13,19 @@ category_rule = {
         "Амортизаторы": ["амортизатор", "подвеска"],
         "Распредвал": ["втулка распределительного вала"],
         "Опоры": ["подушка двигателя"],
+        "Коленчатый Вал": ["вал"],
         "Система Зажигания": ["зажигания", "свеча"],
     },
-    "Тормозная Система": {"Барабаны": ["барабан"], "Втулки": ["втулка"]},
-    "Ходовая часть": {"Стабилизаторы": ["втулка-подушка", "подушка"]},
-    "Крепеж": {"Гайки": ["гайки"]},
+    "Тормозная Система": {
+        "Барабаны": ["барабан"],
+        "Втулки": ["втулка"],
+        "Шланги": ["шланг"],
+    },
+    "Ходовая часть": {
+        "Стабилизаторы": ["втулка-подушка", "подушка"],
+        "Рессоры": ["рессоры"],
+    },
+    "Крепеж": {"Гайки": ["гайка"]},
 }
 
 
@@ -135,3 +143,60 @@ result.to_csv("data/result.csv", index=False, sep=";")
 print(parser.df.head(30))
 category_not_assign = len(result[result["Категория"] == "Не определена"])
 print("Категорий не определено: ", category_not_assign)
+
+
+class CategoryMatcher:
+    def __init__(self, category_rules: Dict):
+        self.category_rules = category_rules
+        self.keyword_map = self._build_keyword_map()
+        self.unmatched_products = set()
+
+    def _build_keyword_map(self) -> Dict[str, Tuple[str, str]]:
+        """Создает обратный индекс ключевых слов"""
+        keyword_map = {}
+        for category, subcategories in self.category_rules.items():
+            for subcategory, keywords in subcategories.items():
+                for keyword in keywords:
+                    keyword_lower = keyword.lower()
+                    if keyword_lower not in keyword_map:
+                        keyword_map[keyword_lower] = (category, subcategory)
+        return keyword_map
+
+    def _preprocess_text(self, text: str) -> str:
+        """Предварительная обработка текста"""
+        text = str(text).lower()
+        text = re.sub(r"[^\w\s]", " ", text)  # Удаляем пунктуацию
+        text = re.sub(r"\s+", " ", text).strip()  # Удаляем лишние пробелы
+        return text
+
+    def match_product(self, product_name: str) -> Tuple[str, str]:
+        """Находит категорию и подкатегорию для продукта"""
+        product_name = self._preprocess_text(product_name)
+        words = product_name.split()
+
+        # Проверяем сначала полные совпадения с ключевыми фразами
+        for keyword, (category, subcategory) in self.keyword_map.items():
+            if (
+                len(keyword.split()) > 1
+            ):  # Если ключевая фраза состоит из нескольких слов
+                if keyword in product_name:
+                    return category, subcategory
+
+        # Затем проверяем отдельные слова
+        for word in words:
+            if word in self.keyword_map:
+                return self.keyword_map[word]
+
+        # Если не нашли, добавляем в список нераспознанных
+        self.unmatched_products.add(product_name)
+        return "Не определена", "Не определена"
+
+
+matcher = CategoryMatcher(category_rule)
+
+
+print(
+    matcher.match_product(
+        "Шланг тормозов гибкий (гайка-штуцер) (0,557м) ПАЗ Вектор NEXT"
+    )
+)
