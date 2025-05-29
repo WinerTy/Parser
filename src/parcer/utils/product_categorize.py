@@ -204,3 +204,6 @@ class ProductManager(ExcelParser):
         ].apply(lambda name: pd.Series(self.matcher.find_category(name)))
         self.df = self.df.reset_index()
         self.df.to_excel(self.path, index=False)
+
+    def find_empty_category(self):
+        return (self.df[self.df["Категория"] == "Не определено"].index + 2).tolist()
