@@ -1,7 +1,7 @@
 from openpyxl import load_workbook
 
 
-class ExselParser:
+class ExcelParser:
     def __init__(self, file_path: str):
         self.file = load_workbook(file_path)
         self.sheet = self.file.active
@@ -13,7 +13,7 @@ class ExselParser:
 
     @property
     def end_row(self) -> int:
-        return self.find_end_row_with_products()
+        return self.find_end_row_with_products() - 1
 
     def find_start_row_with_products(self) -> int:
         """method for find start product table index
@@ -46,6 +46,6 @@ class ExselParser:
                 if cell.value is not None:
                     cell_text = str(cell.value).strip()
                     if cell_text == "Итого:":
-                        return r_idx
+                        return r_idx - 1
 
         return self.sheet.max_row

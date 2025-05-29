@@ -2,22 +2,24 @@ import pandas as pd
 
 import numpy as np
 
-from .exsel_parser import ExselParser
+from .exsel_parser import ExcelParser
 from typing import Optional
 
 from core import conf
 from sqlalchemy import create_engine
-
+from matcher import CategoryMatcher
+from rules import category_rule
 engine = create_engine(conf.db.url)
 
 
-class ProductManager(ExselParser):
+class ProductManager(ExcelParser):
     MAIN_QUANTITY_COL_NAME: str = "Количество"
     NUMERIC_QUANTITY_COL_NAME: str = "Количество_число"
     UNIT_QUANTITY_COL_NAME: str = "Количество_единица"
 
     def __init__(self, file_path: str):
         super().__init__(file_path)
+        self.matcher = CategoryMatcher(category_rule)
         self.df: Optional[pd.DataFrame] = None  # Инициализируем df как None
         self._init_dataframe()  # Загружаем DataFrame
 
@@ -158,7 +160,7 @@ class ProductManager(ExselParser):
             return
         self.df.dropna(axis=0, how="all", inplace=True)
 
-    def to_exsel(self):
+    def to_excel(self):
         self.process_data()
         actual_data = pd.read_sql_table("auto_parts", engine)
         actual_data = actual_data.rename(
@@ -174,8 +176,19 @@ class ProductManager(ExselParser):
                 "type_quantity": self.UNIT_QUANTITY_COL_NAME,
             }
         )
+
+        # Convert columns to appropriate types before updating
+        actual_data["Категория"] = actual_data["Категория"].astype(object)
+        actual_data["Подкатегория"] = actual_data["Подкатегория"].astype(object)
+
         actual_data = actual_data.set_index("Артикул")
         self.df = self.df.set_index("Артикул")
+
+        # Ensure target columns in self.df are also object type for string compatibility
+        for col in ["Категория", "Подкатегория"]:
+            if col in self.df.columns:
+                self.df[col] = self.df[col].astype(object)
+
         self.df.update(
             actual_data[
                 [
@@ -186,6 +199,9 @@ class ProductManager(ExselParser):
                     "Цена",
                 ]
             ]
+        )
+        self.df[["Категория", "Подкатегория"]] = self.df["Товары (работы, услуги)"].apply(
+            lambda name: pd.Series(self.matcher.find_category(name))
         )
         self.df = self.df.reset_index()
         self.df.to_excel(self.path, index=False)

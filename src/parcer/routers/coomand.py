@@ -59,7 +59,7 @@ async def handle_document(message: types.Message, bot: Bot):
             path=local_file_path, filename=original_file_name
         )
         manager = ProductManager(local_file_path)
-        manager.to_exsel()
+        manager.to_excel()
         await message.answer_document(
             document=input_file, caption=f"Вот ваш файл обратно: {original_file_name}"
         )
