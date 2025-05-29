@@ -5,21 +5,20 @@ import numpy as np
 from .exsel_parser import ExcelParser
 from typing import Optional
 
-from core import conf
-from sqlalchemy import create_engine
 from matcher import CategoryMatcher
 from rules import category_rule
-engine = create_engine(conf.db.url)
+from utils.database_helper import db_helper
 
 
 class ProductManager(ExcelParser):
     MAIN_QUANTITY_COL_NAME: str = "Количество"
-    NUMERIC_QUANTITY_COL_NAME: str = "Количество_число"
-    UNIT_QUANTITY_COL_NAME: str = "Количество_единица"
+    NUMERIC_QUANTITY_COL_NAME: str = "Количество число"
+    UNIT_QUANTITY_COL_NAME: str = "Количество единица"
 
     def __init__(self, file_path: str):
         super().__init__(file_path)
         self.matcher = CategoryMatcher(category_rule)
+        self.db_helper = db_helper
         self.df: Optional[pd.DataFrame] = None  # Инициализируем df как None
         self._init_dataframe()  # Загружаем DataFrame
 
@@ -162,7 +161,7 @@ class ProductManager(ExcelParser):
 
     def to_excel(self):
         self.process_data()
-        actual_data = pd.read_sql_table("auto_parts", engine)
+        actual_data = self.db_helper.get_actual_data()
         actual_data = actual_data.rename(
             columns={
                 "article": "Артикул",
@@ -200,8 +199,8 @@ class ProductManager(ExcelParser):
                 ]
             ]
         )
-        self.df[["Категория", "Подкатегория"]] = self.df["Товары (работы, услуги)"].apply(
-            lambda name: pd.Series(self.matcher.find_category(name))
-        )
+        self.df[["Категория", "Подкатегория"]] = self.df[
+            "Товары (работы, услуги)"
+        ].apply(lambda name: pd.Series(self.matcher.find_category(name)))
         self.df = self.df.reset_index()
         self.df.to_excel(self.path, index=False)

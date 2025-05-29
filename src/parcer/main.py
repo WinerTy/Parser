@@ -12,6 +12,9 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    import asyncio
+    try:
+        import asyncio
 
-    asyncio.run(main())
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
