@@ -1,7 +1,7 @@
 
 ## How to run
 
-1. Setup .env file
+1. Setup .env file in ```./src/parser/```
 
 ```txt
 APP_CONFIG__DB__URL=mysql+pymysql://<USER>:<PASSWORD>@<HOST>:<POST>/<DATABASE>
