@@ -1,10 +1,12 @@
-from aiogram import Router, Bot, F
+from aiogram import Router, Bot
 from aiogram import types
 from aiogram.filters import Command, CommandObject
 from typing import Optional
 import os
 from utils.product_categorize import ProductManager
 from utils.database_helper import db_helper
+from datetime import datetime
+
 
 router = Router()
 
@@ -18,6 +20,8 @@ text = """
 Пример:
 /database override - Отправляется вместе с файлом excel и перезапишет все найденные записи в бд на основе данного файла.
 /database - Занесет только новые записи.
+
+/get: Получить актуальные данные из базы данных.
 """
 
 
@@ -59,12 +63,16 @@ async def upload_file_to_server(
         return None
 
 
-@router.message(Command("format"), F.document)
+@router.message(Command("format"))
 async def handle_document(message: types.Message, bot: Bot):
     # Инициализация переменных
     local_file_path = None
 
     try:
+        if not message.document:
+            await message.reply("Пожалуйста, прикрепите файл к команде.")
+            return
+
         # Получение информации о документе
         document = message.document
         file_id = document.file_id
@@ -179,5 +187,36 @@ async def parse_file_to_database(
         if local_file_path:
             try:
                 os.remove(local_file_path)
+            except OSError:
+                pass
+
+
+@router.message(Command("get"))
+async def get_actual_data(
+    message: types.Message,
+):
+    file_path = None
+    try:
+        data = db_helper.get_actual_data()
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        file_name = f"actual_data_{timestamp}.xlsx"
+        file_path = os.path.join(DOWNLOAD_DIR, file_name)
+
+        # Save to Excel
+        data.to_excel(file_path, index=False)
+
+        # Send document
+        await message.reply_document(
+            document=types.FSInputFile(path=file_path, filename=file_name),
+            caption=f"Актуальные данные на {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        )
+
+    except Exception as e:
+        await message.reply(f"Произошла ошибка при получении данных: {str(e)}")
+    finally:
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
             except OSError:
                 pass
