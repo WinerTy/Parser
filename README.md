@@ -9,13 +9,14 @@ APP_CONFIG__BOT__TOKEN=BOT_TOKEN
 ```
 
 2. Dowloand dependencies:
-```bash
-uv pip install .\requirements.txt
-``` - For uv Package manager
-
-```bash
-pip install -r .\requirements.txt
-``` - For Pip(default) manager
+    2.1.For uv Package manager
+    ```bash
+    uv pip install .\requirements.txt
+    ```
+    2.2.For Pip(default) manager
+    ```bash
+    pip install -r .\requirements.txt
+    ```
 
 3. Go to ```./src/parser```
 
