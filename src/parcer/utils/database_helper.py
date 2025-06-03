@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, update, and_
-from sqlalchemy.exc import NoSuchTableError, SQLAlchemyError
+from sqlalchemy.exc import NoSuchTableError, SQLAlchemyError, IntegrityError
 import pandas as pd
 from sqlalchemy.orm import Session
 from models import AutoPart
@@ -140,19 +140,22 @@ class DataBaseHelper(Mapper):
         - Количество обновленных записей
         - Количество деактивированных записей
         """
+        session = None
         try:
             new_data = self._prepare_data(pd.read_excel(file_path), "insert")
+            new_data = new_data.drop_duplicates(subset=["article"])
             records = new_data.to_dict(orient="records")
             file_articles = {r["article"] for r in records}
 
             added, updated, deactivated = 0, 0, 0
 
             with Session(self.engine) as session:
-                # 1. Получаем все артикулы
-                existing_parts = session.query(AutoPart).all()
-                existing_articles = {part.article for part in existing_parts}
+                # 1. Get all existing articles in one query
+                existing_articles = {
+                    article for (article,) in session.query(AutoPart.article).all()
+                }
 
-                # 2. Обработка новых данных
+                # 2. Process new data
                 for i in range(0, len(records), batch_size):
                     batch = records[i : i + batch_size]
                     batch_add = []
@@ -160,23 +163,46 @@ class DataBaseHelper(Mapper):
                     for item in batch:
                         if item["article"] in existing_articles:
                             if override:
+                                # Update existing record
                                 part = (
                                     session.query(AutoPart)
                                     .filter_by(article=item["article"])
+                                    .with_for_update()
                                     .first()
                                 )
-                                for k, v in item.items():
-                                    setattr(part, k, v)
-                                part.is_active = True
-                                updated += 1
+                                if part:
+                                    for k, v in item.items():
+                                        setattr(part, k, v)
+                                    part.is_active = True
+                                    updated += 1
                         else:
-                            batch_add.append(AutoPart(**item, is_active=True))
-                            added += 1
+                            # Check again right before insert to handle race conditions
+                            exists = session.query(
+                                session.query(AutoPart)
+                                .filter_by(article=item["article"])
+                                .exists()
+                            ).scalar()
+                            if not exists:
+                                batch_add.append(AutoPart(**item, is_active=True))
+                                added += 1
+                                existing_articles.add(item["article"])
 
                     if batch_add:
-                        session.bulk_save_objects(batch_add)
+                        try:
+                            session.bulk_save_objects(batch_add)
+                            session.flush()
+                        except IntegrityError:
+                            session.rollback()
+                            # Fall back to individual inserts if bulk fails
+                            for item in batch_add:
+                                try:
+                                    session.add(item)
+                                    session.commit()
+                                except IntegrityError:
+                                    session.rollback()
+                                    continue
 
-                # 3. Деактивация отсутствующих товаров
+                # 3. Deactivate missing products
                 if file_articles:
                     deactivated = (
                         session.query(AutoPart)
@@ -201,7 +227,8 @@ class DataBaseHelper(Mapper):
 
         except Exception as e:
             self.logger.error(f"Insert error: {e}")
-            session.rollback()
+            if session:
+                session.rollback()
             raise
 
 
