@@ -4,6 +4,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import BaseModel
 
 
+class UploadConfig(BaseModel):
+    dowloand_dir: str = "data"
+
+
 class BotConfig(BaseModel):
     token: str
 
@@ -27,6 +31,7 @@ class DatabaseConfig(BaseModel):
 class AppConfig(BaseSettings):
     db: DatabaseConfig
     bot: BotConfig
+    upload: UploadConfig = UploadConfig()
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False,

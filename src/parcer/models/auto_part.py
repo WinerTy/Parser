@@ -20,6 +20,7 @@ class AutoPart(BaseSqlModel, IntIdMixin):
     )
     type_quantity: Mapped[str] = mapped_column(String(64), nullable=False)
     price: Mapped[float] = mapped_column(nullable=False, default=0.0)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
 
     __table_args__ = (
         UniqueConstraint(

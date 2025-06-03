@@ -161,7 +161,7 @@ class ProductManager(ExcelParser):
 
     def to_excel(self):
         self.process_data()
-        actual_data = self.db_helper.get_actual_data()
+        actual_data, not_founded = self.db_helper.update_data(self.df)
         actual_data = actual_data.rename(
             columns={
                 "article": "Артикул",
@@ -193,9 +193,6 @@ class ProductManager(ExcelParser):
                 [
                     "Категория",
                     "Подкатегория",
-                    self.NUMERIC_QUANTITY_COL_NAME,
-                    self.UNIT_QUANTITY_COL_NAME,
-                    "Цена",
                 ]
             ]
         )

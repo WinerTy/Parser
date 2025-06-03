@@ -1,16 +1,12 @@
 from aiogram import Router, Bot
 from aiogram import types
-from aiogram.filters import Command, CommandObject
-from typing import Optional
+from aiogram.filters import Command
 import os
 from utils.product_categorize import ProductManager
-from utils.database_helper import db_helper
-from datetime import datetime
 
+from utils.upload import upload_file_to_server
 
 router = Router()
-
-DOWNLOAD_DIR = "data"
 
 
 text = """
@@ -35,34 +31,6 @@ async def help_command(message: types.Message):
     await message.reply(text)
 
 
-async def upload_file_to_server(
-    bot: Bot,
-    file_id: str,
-    original_file_name: str,
-    user_id: int,
-    message_id: int,
-) -> Optional[str]:
-    if not os.path.exists(DOWNLOAD_DIR):
-        try:
-            os.makedirs(DOWNLOAD_DIR)
-        except OSError:
-            return None
-    server_file_name = f"{user_id}_{message_id}_{original_file_name}"
-    file_path = os.path.join(DOWNLOAD_DIR, server_file_name)
-
-    try:
-        file_info = await bot.get_file(file_id)
-        await bot.download_file(file_info.file_path, destination=file_path)
-        return file_path
-    except Exception:
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except OSError:
-                pass
-        return None
-
-
 @router.message(Command("format"))
 async def handle_document(message: types.Message, bot: Bot):
     # Инициализация переменных
@@ -73,18 +41,10 @@ async def handle_document(message: types.Message, bot: Bot):
             await message.reply("Пожалуйста, прикрепите файл к команде.")
             return
 
-        # Получение информации о документе
-        document = message.document
-        file_id = document.file_id
-        original_file_name = document.file_name or f"unknown_file_{file_id}"
-
         # Загрузка файла на сервер
-        local_file_path = await upload_file_to_server(
+        local_file_path, original_file_name = await upload_file_to_server(
             bot=bot,
-            file_id=file_id,
-            original_file_name=original_file_name,
-            user_id=message.from_user.id,
-            message_id=message.message_id,
+            message=message,
         )
 
         if not local_file_path:
@@ -93,7 +53,6 @@ async def handle_document(message: types.Message, bot: Bot):
                 "Пожалуйста, попробуйте позже."
             )
             return
-
         # Обработка файла
         manager = ProductManager(local_file_path)
         manager.to_excel()
@@ -132,91 +91,5 @@ async def handle_document(message: types.Message, bot: Bot):
         if local_file_path and os.path.exists(local_file_path):
             try:
                 os.remove(local_file_path)
-            except OSError:
-                pass
-
-
-@router.message(Command("database"))
-async def parse_file_to_database(
-    message: types.Message, bot: Bot, command: CommandObject
-):
-    # Инициализация переменных
-    override = False
-    local_file_path = None
-
-    try:
-        # Парсинг аргументов команды
-        if command.args:
-            args = command.args.split()
-            override = args[0] == "override"
-
-        # Проверка наличия документа
-        if not message.document:
-            await message.reply("Пожалуйста, прикрепите файл к команде.")
-            return
-
-        document = message.document
-        file_id = document.file_id
-        original_file_name = document.file_name or f"unknown_file_{file_id}"
-
-        # Загрузка файла на сервер
-        local_file_path = await upload_file_to_server(
-            bot=bot,
-            file_id=file_id,
-            original_file_name=original_file_name,
-            user_id=message.from_user.id,
-            message_id=message.message_id,
-        )
-
-        if not local_file_path:
-            await message.reply(
-                "Произошла ошибка при сохранении вашего файла на сервере. "
-                "Пожалуйста, попробуйте позже."
-            )
-            return
-
-        # Импорт данных в БД
-        db_helper.insert_new_data(local_file_path, override=override)
-        await message.reply("Данные успешно добавлены в базу данных.")
-
-    except Exception as e:
-        await message.reply(f"Произошла ошибка при работе с файлом: {e}")
-
-    finally:
-        # Очистка: удаление временного файла
-        if local_file_path:
-            try:
-                os.remove(local_file_path)
-            except OSError:
-                pass
-
-
-@router.message(Command("get"))
-async def get_actual_data(
-    message: types.Message,
-):
-    file_path = None
-    try:
-        data = db_helper.get_actual_data()
-
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        file_name = f"actual_data_{timestamp}.xlsx"
-        file_path = os.path.join(DOWNLOAD_DIR, file_name)
-
-        # Save to Excel
-        data.to_excel(file_path, index=False)
-
-        # Send document
-        await message.reply_document(
-            document=types.FSInputFile(path=file_path, filename=file_name),
-            caption=f"Актуальные данные на {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        )
-
-    except Exception as e:
-        await message.reply(f"Произошла ошибка при получении данных: {str(e)}")
-    finally:
-        if file_path and os.path.exists(file_path):
-            try:
-                os.remove(file_path)
             except OSError:
                 pass
