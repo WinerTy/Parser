@@ -25,7 +25,7 @@ class DataBaseHelper(Mapper):
     def get_actual_data(self, table_name: str = "auto_parts") -> pd.DataFrame:
         """Получение текущих данных из таблицы"""
         try:
-            return pd.read_sql_table(table_name, self.engine)
+            return pd.read_sql_table(table_name=table_name, con=self.engine)
         except NoSuchTableError:
             self.logger.warning(
                 f"Table {table_name} not found, returning empty DataFrame"
