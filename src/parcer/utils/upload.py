@@ -16,8 +16,7 @@ def validate_dir() -> bool:
         try:
             os.makedirs(conf.upload.dowloand_dir)
             return True
-        except OSError as e:
-            print(f"Failed to create directory: {e}")
+        except OSError:
             return False
     return True
 
@@ -45,11 +44,10 @@ async def upload_file_to_server(
         file_info = await bot.get_file(file_id)
         await bot.download_file(file_info.file_path, destination=file_path)
         return file_path, original_file_name
-    except Exception as e:
-        print(f"File download failed: {e}")
+    except Exception:
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
-            except OSError as e:
-                print(f"Failed to remove temp file: {e}")
+            except OSError:
+                pass
         return None

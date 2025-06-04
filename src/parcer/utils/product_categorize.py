@@ -48,7 +48,6 @@ class ProductManager(ExcelParser):
         try:
             # Ищем индекс колонки, которая получила имя из объединенной ячейки
             qty_col_idx = self.df.columns.get_loc(self.MAIN_QUANTITY_COL_NAME)
-            print(qty_col_idx)
             # Следующая колонка (с единицами измерения) должна быть 'Unnamed: X'
             # Ее реальный индекс в df.columns будет qty_col_idx + 1
             if qty_col_idx + 4 < len(self.df.columns):
@@ -63,17 +62,6 @@ class ProductManager(ExcelParser):
                         unit_col_original_name: self.UNIT_QUANTITY_COL_NAME,
                     }
                     self.df.rename(columns=rename_map, inplace=True)
-                else:
-                    print(
-                        f"Предупреждение: Колонка '{unit_col_original_name}' после '{self.MAIN_QUANTITY_COL_NAME}' не является 'Unnamed'. Единицы измерения могут быть не обработаны."
-                    )
-                    # Можно просто переименовать первую часть, если второй нет или она не Unnamed
-                    self.df.rename(
-                        columns={
-                            self.MAIN_QUANTITY_COL_NAME: self.NUMERIC_QUANTITY_COL_NAME
-                        },
-                        inplace=True,
-                    )
             else:
                 # Если нет следующей колонки, просто переименовываем основную
                 self.df.rename(
@@ -82,16 +70,11 @@ class ProductManager(ExcelParser):
                     },
                     inplace=True,
                 )
-                print(
-                    f"Предупреждение: Нет колонки после '{self.MAIN_QUANTITY_COL_NAME}'. Только она переименована в '{self.NUMERIC_QUANTITY_COL_NAME}'."
-                )
 
         except KeyError:
-            print(
-                f"Предупреждение: Основная колонка количества '{self.MAIN_QUANTITY_COL_NAME}' не найдена."
-            )
-        except Exception as e:
-            print(f"Ошибка при обработке колонок количества: {e}")
+            raise
+        except Exception:
+            raise
 
     def process_data(self) -> pd.DataFrame:
         """Выполняет все шаги обработки DataFrame."""
@@ -130,11 +113,9 @@ class ProductManager(ExcelParser):
             if "Подкатегория" not in self.df.columns:
                 self.df.insert(loc=idx + 2, column="Подкатегория", value=np.nan)
         except KeyError:
-            print(
-                f"Предупреждение: Колонка '{target_col}' не найдена. Колонки категорий не добавлены."
-            )
-        except Exception as e:
-            print(f"Ошибка при добавлении колонок категорий: {e}")
+            raise
+        except Exception:
+            raise
 
     def _delete_duplicate_headers(self) -> None:
         """Удаляет строки, которые являются дубликатами заголовков."""
@@ -145,13 +126,6 @@ class ProductManager(ExcelParser):
             duplicate_header_indices = self.df[self.df["№"] == "№"].index
             if not duplicate_header_indices.empty:
                 self.df.drop(axis=0, index=duplicate_header_indices, inplace=True)
-                print(
-                    f"Удалены дубликаты строк заголовков: {len(duplicate_header_indices)} строк."
-                )
-        else:
-            print(
-                "Предупреждение: Колонка '№' не найдена, дубликаты заголовков не удалены."
-            )
 
     def _drop_all_na_rows(self) -> None:
         """Удаляет строки, где все значения NaN."""
