@@ -1,27 +1,34 @@
+# Подготовка к запуску
 
-## How to run
 
-
-1. Dowloand dependencies:
-    2.1.For uv Package manager
+1. Клонирование репозитория 
     ```bash
-    uv pip install .\requirements.txt
-    ```
-    2.2.For Pip(default) manager
+     git clone --depth=1 https://github.com/WinerTy/Parser.git
+     ```
+
+2. Настройка окружения
+    - Зайти в директорию проетка 
     ```bash
-    pip install -r .\requirements.txt
+        cd Parser 
+    ```
+    - Создать в ней файл .env со своими данными 
+    ```bash
+    echo -e "APP_CONFIG__DB__URL=mysql+pymysql://<USER>:<PASSWORD>@<HOST>:<POST>/<DATABASE>\nAPP_CONFIG__BOT__TOKEN=<BOT_TOKEN>" > .env
     ```
 
-2. Setup .env file in ```./src/parser/```
+    - Установить Docker (Если нету). [**Документация по установке**](https://docs.docker.com/engine/install/ubuntu/)
 
-```txt
-APP_CONFIG__DB__URL=mysql+pymysql://<USER>:<PASSWORD>@<HOST>:<POST>/<DATABASE>
-APP_CONFIG__BOT__TOKEN=BOT_TOKEN 
-```
+3. Запуск контейнера 
+    - Сборка 
+    ```bash
+    docker build -t <Название сборки> .
+    ```
 
-3. Go to ```./src/parser```
-
-4. Run script
-```bash
-python main.py
-```
+    - Запуск 
+    ```bash
+    docker run <Название сборки>
+    ```
+    - Если нужно запустить в фоновом режиме 
+    ```bash
+    docker run -d <Название сборки>
+    ```
