@@ -9,11 +9,6 @@ from utils.upload import upload_file_to_server
 router = Router()
 
 
-@router.message(Command("db"))
-async def hello_from_db(message: types.Message):
-    await message.reply("Hello from db!")
-
-
 @router.message(Command("get"))
 async def get_actual_data(
     message: types.Message,
