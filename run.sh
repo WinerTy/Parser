@@ -6,18 +6,16 @@ if ! command -v uv &>/dev/null; then
 fi
 
 
-if [! -d ".venv"]; then
+if [ ! -d ".venv" ]; then
     uv venv --python python3.13
 fi
 
 source .venv/bin/activate
 
-if [ -f "requirements.txt"];then
+if [ -f "requirements.txt" ];then
     uv pip install -r requirements.txt
 else
-    uv sync
+    uv pip sync
 fi
 
-cd src/parcer/
-
-uv run python main.py
+cd src/parser/ && uv run python main.py
