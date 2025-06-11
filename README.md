@@ -18,7 +18,12 @@
 
 
 ## Bash Script
-Выполнить команду в терминале 
+Установить python и pip 
+```bash
+sudo apt install python3 python3-pip -y
+```
+
+Выполнить команду в терминале
 ```bash
 sh run.sh
 ```
