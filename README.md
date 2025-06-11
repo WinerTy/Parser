@@ -6,17 +6,6 @@
      git clone --depth=1 https://github.com/WinerTy/Parser.git
      ```
 
-## Docker
-Создание сборки
-```bash 
-    docker build -t tg_bot .
-```
-Запуск контейнера 
-```bash
-    docker run tg_bot 
-```
-
-
 ## Bash Script
 Установить python и pip 
 ```bash
