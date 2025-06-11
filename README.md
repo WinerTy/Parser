@@ -16,3 +16,8 @@ sudo apt install python3 python3-pip -y
 ```bash
 bash run.sh
 ```
+
+Для запуска в фоновом режиме
+```bash
+bash run.sh &
+```
